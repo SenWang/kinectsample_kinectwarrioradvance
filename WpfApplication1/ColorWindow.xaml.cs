@@ -83,31 +83,78 @@ namespace WpfApplication1
 
                 if (user != null)
                 {
+                    GestureDetection(user);
+
                     Joint jpl = user.Joints[JointType.HandLeft];                    
                     ColorImagePoint cpl = MapToColorImagePoint(jpl);
-                    double deg = GetOrientation(user);                   
-                    Title = "左手掌旋轉角度: " + deg;
-                    DrawShield(cpl,deg);
+                    double degsh = GetOrientation(user,JointType.HandLeft);
+                    DrawShield(cpl,degsh);
                     
                     Joint jpr = user.Joints[JointType.HandRight];
                     ColorImagePoint cpr = MapToColorImagePoint(jpr);
                     DrawSword(cpr);
-
                 }
             }
         }
 
-        private static double GetOrientation(Skeleton user)
+        void GestureDetection(Skeleton skeleton)
         {
-            BoneOrientation bol = user.BoneOrientations[JointType.HandLeft];
-            float x = bol.AbsoluteRotation.Quaternion.X;
-            float y = bol.AbsoluteRotation.Quaternion.Y;
-            double r = Math.Sqrt(x * x + y * y);
-            double rad = Math.Asin(x / r);
+            Joint jhl = skeleton.Joints[JointType.HandLeft];
+            Joint jhr = skeleton.Joints[JointType.HandRight];
+            Joint jsc = skeleton.Joints[JointType.ShoulderCenter];
+            Joint jhc = skeleton.Joints[JointType.HipCenter];
+            if (Distance(jhl, jhr) < 0.2 && Distance(jhl, jsc) < 0.2)
+            {
+                LeftHand.Visibility = Visibility.Visible;
+                RightHand.Visibility = Visibility.Visible;
+            }
+            else if (Distance(jhl, jhr) < 0.2 && Distance(jhl, jhc) < 0.2)
+            {
+                LeftHand.Visibility = Visibility.Collapsed;
+                RightHand.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        double Distance(Joint p1, Joint p2)
+        {
+            double dist = 0;
+            dist = Math.Sqrt(Math.Pow(p2.Position.X - p1.Position.X, 2) + 
+                             Math.Pow(p2.Position.Y - p1.Position.Y, 2));
+            return dist;
+        }
+
+        private double GetOrientation(Skeleton user, JointType type)
+        {
+            BoneOrientation bol = user.BoneOrientations[type];
+            float hx = bol.HierarchicalRotation.Quaternion.X;
+            float hy = bol.HierarchicalRotation.Quaternion.Y;
+
+            double r = Math.Sqrt(hx * hx + hy * hy);
+            double rad = Math.Asin(hx / r);
             return RadianToDegree(rad);
         }
 
-        private static double RadianToDegree(double rad)
+        //除錯用版本
+        //private double GetOrientationDebug(Skeleton user, JointType type)
+        //{
+        //    BoneOrientation bol = user.BoneOrientations[type];
+        //    startend.Text = "起始關節 " + bol.StartJoint + ", 結束關節 " + bol.EndJoint;
+        //    float x = bol.AbsoluteRotation.Quaternion.X;
+        //    float y = bol.AbsoluteRotation.Quaternion.Y;
+        //    float z = bol.AbsoluteRotation.Quaternion.Z;
+        //    absror.Text = String.Format("絕對方位 X={0:0.00}   Y={1:0.00}   Z={2:0.00}", x, y, z);
+        //    float hx = bol.HierarchicalRotation.Quaternion.X;
+        //    float hy = bol.HierarchicalRotation.Quaternion.Y;
+        //    float hz = bol.HierarchicalRotation.Quaternion.Z;
+        //    hirror.Text = String.Format("相對方位 X={0:0.00}   Y={1:0.00}   Z={2:0.00}", hx, hy, hz);
+
+        //    double r = Math.Sqrt(hx * hx + hy * hy);
+        //    double rad = Math.Asin(hx / r);
+        //    Title = "角度: " + rad;
+        //    return RadianToDegree(rad);
+        //}
+
+        private double RadianToDegree(double rad)
         {
             return rad * (180.0 / Math.PI);
         }
@@ -136,7 +183,6 @@ namespace WpfApplication1
             RightHand.X2 = cp.X;
             RightHand.Y2 = cp.Y - 100;
         }
-
 
         void myKinect_ColorFrameReady(object sender, ColorImageFrameReadyEventArgs e)
         {
